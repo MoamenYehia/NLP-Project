@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SentimentLens — NLP Emotion Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">SentimentLens</span>
+      </div>
+      <div class="header-badges">
+        <span class="badge">VADER</span>
+        <span class="badge">TextBlob</span>
+        <span class="badge">TF-IDF</span>
+        <span class="badge">NLTK</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- Input -->
+    <section class="input-section">
+      <div class="input-card">
+        <div class="input-header">
+          <label for="text-input" class="input-label">Enter text to analyze</label>
+          <span class="char-count"><span id="char-num">0</span> / 5000</span>
+        </div>
+        <textarea
+          id="text-input"
+          class="text-area"
+          placeholder="Paste any text — a review, tweet, news article, email — and the NLP pipeline will decode its sentiment and emotional fingerprint."
+          maxlength="5000"
+          rows="7"
+        ></textarea>
+        <div class="input-footer">
+          <div class="sample-buttons">
+            <span class="samples-label">Samples:</span>
+            <button class="sample-btn" data-sample="positive">😄 Positive</button>
+            <button class="sample-btn" data-sample="negative">😤 Negative</button>
+            <button class="sample-btn" data-sample="mixed">🤔 Mixed</button>
+            <button class="sample-btn" data-sample="neutral">📰 Neutral</button>
+          </div>
+          <button id="analyze-btn" class="analyze-btn">
+            <span class="btn-text">Analyze</span>
+            <span class="btn-icon">→</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section id="results" aria-live="polite">
+
+      <div class="loading-state" id="loading" hidden>
+        <div class="loading-pulse">
+          <div class="pulse-ring"></div>
+          <span class="pulse-icon">◈</span>
+        </div>
+        <p class="loading-text">Running NLP pipeline…</p>
+      </div>
+
+      <div class="error-state" id="error-state" hidden>
+        <p class="error-icon">⚠</p>
+        <p class="error-msg" id="error-msg">Something went wrong.</p>
+        <button class="retry-btn" onclick="clearError()">Try again</button>
+      </div>
+
+      <div id="results-content" hidden>
+
+        <!-- Sentiment banner -->
+        <div class="sentiment-banner" id="sentiment-banner">
+          <div class="sentiment-left">
+            <p class="sentiment-eyebrow">Overall Sentiment</p>
+            <h2 class="sentiment-label" id="sentiment-label">—</h2>
+            <p class="sentiment-explanation" id="sentiment-explanation"></p>
+          </div>
+          <div class="sentiment-right">
+            <div class="sentiment-score-ring">
+              <svg viewBox="0 0 120 120" class="ring-svg">
+                <circle class="ring-bg" cx="60" cy="60" r="50"/>
+                <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="50"
+                  stroke-dasharray="314" stroke-dashoffset="314"/>
+              </svg>
+              <div class="ring-label">
+                <span class="ring-number" id="ring-number">0</span>
+                <span class="ring-unit">%</span>
+              </div>
+            </div>
+            <p class="score-caption">Confidence</p>
+          </div>
+        </div>
+
+        <!-- NLP model scores -->
+        <div class="model-scores-row" id="model-scores-row">
+          <div class="model-card">
+            <p class="model-name">VADER</p>
+            <p class="model-desc">Rule-based lexicon</p>
+            <div class="model-bars" id="vader-bars"></div>
+          </div>
+          <div class="model-card">
+            <p class="model-name">TextBlob</p>
+            <p class="model-desc">Pattern-based</p>
+            <div class="model-meter" id="textblob-meter"></div>
+          </div>
+          <div class="model-card">
+            <p class="model-name">Text Statistics</p>
+            <p class="model-desc">Readability & structure</p>
+            <div class="stat-pills" id="stat-pills"></div>
+          </div>
+        </div>
+
+        <!-- Emotion grid -->
+        <div class="section-block">
+          <h3 class="section-title">Emotion Breakdown <span class="method-tag">NRC Lexicon + NLTK</span></h3>
+          <div class="emotion-grid" id="emotion-grid"></div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3 class="section-title">Emotion Radar</h3>
+            <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h3 class="section-title">Intensity Bars</h3>
+            <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- POS chart + keywords + summary -->
+        <div class="bottom-row">
+          <div class="pos-card">
+            <h3 class="section-title">POS Distribution <span class="method-tag">NLTK</span></h3>
+            <div class="chart-wrap-sm"><canvas id="posChart"></canvas></div>
+          </div>
+          <div class="keywords-card">
+            <h3 class="section-title">Key Signals <span class="method-tag">TF-IDF</span></h3>
+            <div class="keywords-list" id="keywords-list"></div>
+          </div>
+          <div class="summary-card">
+            <h3 class="section-title">Analysis Summary</h3>
+            <p class="summary-text" id="summary-text"></p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>100% local NLP · VADER · TextBlob · TF-IDF · NLTK · No external APIs</p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>
